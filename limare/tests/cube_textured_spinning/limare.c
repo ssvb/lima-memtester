@@ -35,6 +35,7 @@ main(int argc, char *argv[])
 	struct limare_state *state;
 	int ret;
 
+#ifndef HAVE_NO_LIBMALI_BLOB
 	const char *vertex_shader_source =
 		"uniform mat4 modelviewMatrix;\n"
 		"uniform mat4 modelviewprojectionMatrix;\n"
@@ -72,6 +73,7 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
 		"}                            \n";
+#endif
 
 	state = limare_init();
 	if (!state)
@@ -92,8 +94,13 @@ main(int argc, char *argv[])
 	limare_depth_mask(state, 1);
 
 	int program = limare_program_new(state);
+#ifndef HAVE_NO_LIBMALI_BLOB
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);
+#else
+	vertex_shader_attach_mbs_file(state, program, "shader_v.mbs");
+	fragment_shader_attach_mbs_file(state, program, "shader_f.mbs");
+#endif
 
 	limare_link(state);
 

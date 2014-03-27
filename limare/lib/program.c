@@ -1063,7 +1063,9 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 	struct lima_shader_binary *binary;
 	int length = strlen(source);
 	int ret;
-
+#ifdef HAVE_NO_LIBMALI_BLOB
+	return NULL;
+#else
 	binary = calloc(1, sizeof(struct lima_shader_binary));
 	if (!binary) {
 		printf("%s: Error: allocation failed: %s\n",
@@ -1164,6 +1166,7 @@ limare_shader_compile(struct limare_state *state, int type, const char *source)
 
 
 	return binary;
+#endif
 }
 
 static int
