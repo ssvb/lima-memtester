@@ -65,6 +65,7 @@ main(int argc, char *argv[])
 		"    gl_FragColor = texture2D(in_texture, coord);\n"
 		"}                            \n";
 #else
+	#include "shader_v.h"
 	#include "shader_f.h"
 #endif
 
@@ -91,10 +92,8 @@ main(int argc, char *argv[])
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);
 #else
-	ret = vertex_shader_attach_mbs_file(state, program, "shader_v.mbs");
-	if (ret)
-		return ret;
-
+	vertex_shader_attach_mbs_stream(state, program, vertex_shader_binary,
+						sizeof(vertex_shader_binary));
 	fragment_shader_attach_mbs_stream(state, program, fragment_shader_binary,
 						sizeof(fragment_shader_binary));
 #endif

@@ -21,11 +21,4 @@ $CC -DHAVE_NO_LIBMALI_BLOB \
     -pthread -lm -lrt || exit 1
 
 echo
-echo Now you have the \'textured-cube-static\' program, which uses the open source
-echo lima driver to show a spinning cube demo. It expects to find and load
-echo \'shader_f.mbs\' file with binary vertex shader for this demo. The fragment
-echo shader is already provided by the open source shader compiler.
-echo See \'limare/tests/cube_textured_spinning/limare.c\' source for more details
-echo about the needed shaders.
-echo
 echo Compilation succeeded.
