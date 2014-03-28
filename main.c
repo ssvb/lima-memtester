@@ -31,9 +31,6 @@ int memtester_main(int argc, char *argv[]);
 
 static void *lima_thread(void *threadid)
 {
-	if (system("modprobe mali")) {
-		abort();
-	}
 	textured_cube_main();
 	/* If we reach here, something bad has happened */
 	abort();
@@ -43,10 +40,16 @@ static void *lima_thread(void *threadid)
 int main (int argc, char *argv[])
 {
 	pthread_t th;
+
+	if (system("modprobe mali >/dev/null 2>&1")) {
+		fprintf(stderr, "Failed to 'modprobe mali'.\n");
+		abort();
+	}
+
 	pthread_create(&th, NULL, lima_thread, NULL);
 
-	/* Wait a bit until lima starts or fails */
-	usleep(100000);
+	/* Wait a bit and let lima stop spamming to the console */
+	usleep(300000);
 
 	printf("\n");
 	memtester_main(argc, argv);
