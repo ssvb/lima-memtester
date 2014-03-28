@@ -9,6 +9,7 @@ then
 fi
 
 $CC -DHAVE_NO_LIBMALI_BLOB -DMEMTESTER_MODE \
+    -DMESA_EGL_NO_X11_HEADERS \
     -o lima-memtester-static \
     -s -static -Os \
     -Iinclude -Ilimare/lib -Ilimare/tests/common \

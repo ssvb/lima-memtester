@@ -9,6 +9,7 @@ then
 fi
 
 $CC -DHAVE_NO_LIBMALI_BLOB \
+    -DMESA_EGL_NO_X11_HEADERS \
     -o textured-cube-static \
     -s -static -Os \
     -Iinclude -Ilimare/lib -Ilimare/tests/common \
