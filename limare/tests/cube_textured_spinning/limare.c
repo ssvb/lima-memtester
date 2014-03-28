@@ -29,8 +29,12 @@
 #include "cube_mesh.h"
 #include "companion.h"
 
+#ifdef MEMTESTER_MODE
+int textured_cube_main(void)
+#else
 int
 main(int argc, char *argv[])
+#endif
 {
 	struct limare_state *state;
 	int ret;

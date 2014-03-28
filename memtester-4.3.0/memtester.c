@@ -107,7 +107,7 @@ void usage(char *me) {
     exit(EXIT_FAIL_NONSTARTER);
 }
 
-int main(int argc, char **argv) {
+int memtester_main(int argc, char **argv) {
     ul loops, loop, i;
     size_t pagesize, wantraw, wantmb, wantbytes, wantbytes_orig, bufsize,
          halflen, count;
@@ -248,7 +248,7 @@ int main(int argc, char **argv) {
     }
     if (wantbytes < pagesize) {
         fprintf(stderr, "bytes %ld < pagesize %ld -- memory argument too large?\n",
-                wantbytes, pagesize);
+                (long)wantbytes, (long)pagesize);
         exit(EXIT_FAIL_NONSTARTER);
     }
 
