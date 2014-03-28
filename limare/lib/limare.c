@@ -1681,11 +1681,6 @@ limare_frame_new(struct limare_state *state)
 
 	state->frame_count++;
 
-#if 1
-	if (!(state->frame_count & 0x3F))
-		limare_framerate_print(state, 64, state->frame_count);
-#endif
-
 	return 0;
 }
 

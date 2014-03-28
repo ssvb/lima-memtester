@@ -37,41 +37,28 @@ main(int argc, char *argv[])
 
 #ifndef HAVE_NO_LIBMALI_BLOB
 	const char *vertex_shader_source =
-		"uniform mat4 modelviewMatrix;\n"
 		"uniform mat4 modelviewprojectionMatrix;\n"
-		"uniform mat3 normalMatrix;\n"
 		"\n"
-		"attribute vec4 in_position;    \n"
-		"attribute vec3 in_normal;      \n"
-		"attribute vec2 in_coord;       \n"
-		"\n"
-		"vec4 lightSource = vec4(10.0, 20.0, 40.0, 0.0);\n"
+		"attribute vec4 in_position;  \n"
+		"attribute vec2 in_coord;     \n"
 		"                             \n"
-		"varying vec4 vVaryingColor;  \n"
 		"varying vec2 coord;          \n"
 		"                             \n"
 		"void main()                  \n"
 		"{                            \n"
 		"    gl_Position = modelviewprojectionMatrix * in_position;\n"
-		"    vec3 vEyeNormal = normalMatrix * in_normal;\n"
-		"    vec4 vPosition4 = modelviewMatrix * in_position;\n"
-		"    vec3 vPosition3 = vPosition4.xyz / vPosition4.w;\n"
-		"    vec3 vLightDir = normalize(lightSource.xyz - vPosition3);\n"
-		"    float diff = max(0.0, dot(vEyeNormal, vLightDir));\n"
-		"    vVaryingColor = vec4(diff * vec3(1.0, 1.0, 1.0), 1.0);\n"
 		"    coord = in_coord;        \n"
 		"}                            \n";
 	const char *fragment_shader_source =
 		"precision mediump float;     \n"
 		"                             \n"
-		"varying vec4 vVaryingColor;  \n"
 		"varying vec2 coord;          \n"
 		"                             \n"
 		"uniform sampler2D in_texture; \n"
 		"                             \n"
 		"void main()                  \n"
 		"{                            \n"
-		"    gl_FragColor = vVaryingColor * texture2D(in_texture, coord);\n"
+		"    gl_FragColor = texture2D(in_texture, coord);\n"
 		"}                            \n";
 #endif
 
@@ -109,8 +96,6 @@ main(int argc, char *argv[])
 	limare_attribute_pointer(state, "in_coord", LIMARE_ATTRIB_FLOAT,
 				 2, 0, CUBE_VERTEX_COUNT,
 				 cube_texture_coordinates);
-	limare_attribute_pointer(state, "in_normal", LIMARE_ATTRIB_FLOAT,
-				 3, 0, CUBE_VERTEX_COUNT, cube_normals);
 
 	int texture = limare_texture_upload(state, companion_texture_flat,
 					    COMPANION_TEXTURE_WIDTH,
@@ -143,22 +128,8 @@ main(int argc, char *argv[])
 		esMatrixLoadIdentity(&modelviewprojection);
 		esMatrixMultiply(&modelviewprojection, &modelview, &projection);
 
-		float normal[9];
-		normal[0] = modelview.m[0][0];
-		normal[1] = modelview.m[0][1];
-		normal[2] = modelview.m[0][2];
-		normal[3] = modelview.m[1][0];
-		normal[4] = modelview.m[1][1];
-		normal[5] = modelview.m[1][2];
-		normal[6] = modelview.m[2][0];
-		normal[7] = modelview.m[2][1];
-		normal[8] = modelview.m[2][2];
-
-		limare_uniform_attach(state, "modelviewMatrix", 16,
-				      &modelview.m[0][0]);
 		limare_uniform_attach(state, "modelviewprojectionMatrix", 16,
 				      &modelviewprojection.m[0][0]);
-		limare_uniform_attach(state, "normalMatrix", 9, normal);
 
 		limare_frame_new(state);
 
@@ -173,11 +144,6 @@ main(int argc, char *argv[])
 			return ret;
 
 		limare_buffer_swap(state);
-
-#if 1
-		if (i >= 6400)
-			break;
-#endif
 	}
 
 	limare_finish(state);
