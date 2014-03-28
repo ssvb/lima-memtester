@@ -60,6 +60,8 @@ main(int argc, char *argv[])
 		"{                            \n"
 		"    gl_FragColor = texture2D(in_texture, coord);\n"
 		"}                            \n";
+#else
+	#include "shader_f.h"
 #endif
 
 	state = limare_init();
@@ -85,8 +87,12 @@ main(int argc, char *argv[])
 	vertex_shader_attach(state, program, vertex_shader_source);
 	fragment_shader_attach(state, program, fragment_shader_source);
 #else
-	vertex_shader_attach_mbs_file(state, program, "shader_v.mbs");
-	fragment_shader_attach_mbs_file(state, program, "shader_f.mbs");
+	ret = vertex_shader_attach_mbs_file(state, program, "shader_v.mbs");
+	if (ret)
+		return ret;
+
+	fragment_shader_attach_mbs_stream(state, program, fragment_shader_binary,
+						sizeof(fragment_shader_binary));
 #endif
 
 	limare_link(state);
