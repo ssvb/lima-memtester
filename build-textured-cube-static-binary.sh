@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ x$CC == "x" ]
+if [ x$CC = "x" ]
 then
     echo Note: using 'gcc' as a compiler. But it is possible to do something
     echo like \'export CC=foobar\' to override this.
