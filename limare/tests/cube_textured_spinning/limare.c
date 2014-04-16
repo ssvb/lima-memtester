@@ -115,6 +115,13 @@ main(int argc, char *argv[])
 	int i = 0;
 
 	while (1) {
+#ifdef MEMTESTER_MODE
+		extern int memtester_has_found_errors;
+		if (memtester_has_found_errors) {
+			state->clear_color = 0xFF000040 + abs((i * 1) %
+					((255 - 0x40) * 2) - (255 - 0x40));
+		}
+#endif
 		i++;
 		if (i == 0xFFFFFFF)
 			i = 0;

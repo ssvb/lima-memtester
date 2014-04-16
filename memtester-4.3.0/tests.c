@@ -29,6 +29,8 @@ char progress[] = "-\\|/";
 
 /* Function definitions. */
 
+int memtester_has_found_errors = 0;
+
 int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
     int r = 0;
     size_t i;
@@ -38,6 +40,7 @@ int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
 
     for (i = 0; i < count; i++, p1++, p2++) {
         if (*p1 != *p2) {
+            memtester_has_found_errors = 1;
             if (use_phys) {
                 physaddr = physaddrbase + (i * sizeof(ul));
                 fprintf(stderr, 
