@@ -29,7 +29,7 @@ char progress[] = "-\\|/";
 
 /* Function definitions. */
 
-int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
+int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
     int r = 0;
     size_t i;
     ulv *p1 = bufa;
@@ -42,12 +42,12 @@ int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
                 physaddr = physaddrbase + (i * sizeof(ul));
                 fprintf(stderr, 
                         "FAILURE: 0x%08lx != 0x%08lx at physical address "
-                        "0x%08lx.\n", 
-                        (ul) *p1, (ul) *p2, physaddr);
+                        "0x%08lx (%s).\n", 
+                        (ul) *p1, (ul) *p2, physaddr, tname);
             } else {
                 fprintf(stderr, 
-                        "FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx.\n", 
-                        (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)));
+                        "FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx (%s).\n",
+                        (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)), tname);
             }
             /* printf("Skipping to next test..."); */
             r = -1;
@@ -120,7 +120,7 @@ int test_random_value(ulv *bufa, ulv *bufb, size_t count) {
     }
     printf("\b \b");
     fflush(stdout);
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("random_value", bufa, bufb, count);
 }
 
 int test_xor_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -133,7 +133,7 @@ int test_xor_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ ^= q;
         *p2++ ^= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("xor", bufa, bufb, count);
 }
 
 int test_sub_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -146,7 +146,7 @@ int test_sub_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ -= q;
         *p2++ -= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("sub", bufa, bufb, count);
 }
 
 int test_mul_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -159,7 +159,7 @@ int test_mul_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ *= q;
         *p2++ *= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("mul", bufa, bufb, count);
 }
 
 int test_div_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -175,7 +175,7 @@ int test_div_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ /= q;
         *p2++ /= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("div", bufa, bufb, count);
 }
 
 int test_or_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -188,7 +188,7 @@ int test_or_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ |= q;
         *p2++ |= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("or", bufa, bufb, count);
 }
 
 int test_and_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -201,7 +201,7 @@ int test_and_comparison(ulv *bufa, ulv *bufb, size_t count) {
         *p1++ &= q;
         *p2++ &= q;
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("and", bufa, bufb, count);
 }
 
 int test_seqinc_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -213,7 +213,7 @@ int test_seqinc_comparison(ulv *bufa, ulv *bufb, size_t count) {
     for (i = 0; i < count; i++) {
         *p1++ = *p2++ = (i + q);
     }
-    return compare_regions(bufa, bufb, count);
+    return compare_regions("seqinc", bufa, bufb, count);
 }
 
 int test_solidbits_comparison(ulv *bufa, ulv *bufb, size_t count) {
@@ -238,7 +238,7 @@ int test_solidbits_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("solidbits", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -269,7 +269,7 @@ int test_checkerboard_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("checkerboard", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -298,7 +298,7 @@ int test_blockseq_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("blockseq", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -331,7 +331,7 @@ int test_walkbits0_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("walkbits0", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -364,7 +364,7 @@ int test_walkbits1_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("walkbits1", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -403,7 +403,7 @@ int test_bitspread_comparison(ulv *bufa, ulv *bufb, size_t count) {
         printf("\b\b\b\b\b\b\b\b\b\b\b");
         printf("testing %3u", j);
         fflush(stdout);
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("bitspread", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -436,7 +436,7 @@ int test_bitflip_comparison(ulv *bufa, ulv *bufb, size_t count) {
             printf("\b\b\b\b\b\b\b\b\b\b\b");
             printf("testing %3u", k * 8 + j);
             fflush(stdout);
-            if (compare_regions(bufa, bufb, count)) {
+            if (compare_regions("bitflip", bufa, bufb, count)) {
                 return -1;
             }
         }
@@ -476,7 +476,7 @@ int test_8bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
                 fflush(stdout);
             }
         }
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("8bit_wide_random", bufa, bufb, count)) {
             return -1;
         }
     }
@@ -514,7 +514,7 @@ int test_16bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
                 fflush(stdout);
             }
         }
-        if (compare_regions(bufa, bufb, count)) {
+        if (compare_regions("16bit_wide_random", bufa, bufb, count)) {
             return -1;
         }
     }
