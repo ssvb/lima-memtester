@@ -10,7 +10,7 @@ fi
 
 $CC -DHAVE_NO_LIBMALI_BLOB \
     -DMESA_EGL_NO_X11_HEADERS \
-    -o textured-cube-static \
+    -o textured-cube \
     -s -static -Os \
     -Iinclude -Ilimare/lib -Ilimare/tests/common \
     limare/lib/gp.c limare/lib/limare.c limare/lib/bmp.c limare/lib/program.c \
@@ -22,4 +22,4 @@ $CC -DHAVE_NO_LIBMALI_BLOB \
     -pthread -lm -lrt || exit 1
 
 echo
-echo Compilation succeeded.
+echo Compilation succeeded, now you have the \'textured-cube\' binary.
