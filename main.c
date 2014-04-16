@@ -25,9 +25,30 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 int textured_cube_main(void);
 int memtester_main(int argc, char *argv[]);
+
+static void check_kernel_cmdline(void)
+{
+	char buffer[1024];
+	FILE *f = fopen("/proc/cmdline", "r");
+	if (!f) {
+		printf("Warning: can't open /proc/cmdline\n");
+		return;
+	}
+	if (fgets(buffer, sizeof(buffer), f) &&
+	    strstr(buffer, "sunxi_no_mali_mem_reserve"))
+	{
+		fprintf(stderr, "Please remove 'sunxi_no_mali_mem_reserve' option from\n");
+		fprintf(stderr, "your kernel command line. Otherwise the mali kernel\n");
+		fprintf(stderr, "driver may be non-functional and actually knock down\n");
+		fprintf(stderr, "your system with some old linux-sunxi kernels.\n");
+		abort();
+	}
+	fclose(f);
+}
 
 static void *lima_thread(void *threadid)
 {
@@ -40,6 +61,8 @@ static void *lima_thread(void *threadid)
 static void start_lima_thread(void)
 {
 	pthread_t th;
+
+	check_kernel_cmdline();
 
 	if (system("modprobe mali >/dev/null 2>&1")) {
 		fprintf(stderr, "Failed to 'modprobe mali'.\n");
