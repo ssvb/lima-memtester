@@ -37,7 +37,7 @@ static void *lima_thread(void *threadid)
 	return NULL;
 }
 
-int main (int argc, char *argv[])
+static void start_lima_thread(void)
 {
 	pthread_t th;
 
@@ -52,6 +52,19 @@ int main (int argc, char *argv[])
 	usleep(300000);
 
 	printf("\n");
+}
+
+int main (int argc, char *argv[])
+{
+	printf("This is a simple textured cube demo from the lima driver and\n");
+	printf("a memtester. Both combined in a single program. The mali400\n");
+	printf("hardware is only used to stress RAM in the background. But\n");
+	printf("this happens to significantly increase chances of exposing\n");
+	printf("memory stability related problems.\n\n");
+
+	if (argc > 1)
+		start_lima_thread();
+
 	memtester_main(argc, argv);
 
 	return 0;
