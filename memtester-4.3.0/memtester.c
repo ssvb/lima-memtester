@@ -97,6 +97,7 @@ void usage(char *me);
 
 /* Global vars - so tests have access to this information */
 int use_phys = 0;
+int memtester_early_exit = 0;
 off_t physaddrbase = 0;
 
 /* Function definitions */
@@ -135,7 +136,10 @@ int memtester_main(int argc, char **argv) {
     pagesize = memtester_pagesize();
     pagesizemask = (ptrdiff_t) ~(pagesize - 1);
     printf("pagesizemask is 0x%tx\n", pagesizemask);
-    
+
+    if (getenv("MEMTESTER_EARLY_EXIT"))
+        memtester_early_exit = 1;
+
     /* If MEMTESTER_TEST_MASK is set, we use its value as a mask of which
        tests we run.
      */
