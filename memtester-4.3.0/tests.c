@@ -52,6 +52,8 @@ int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
                         "FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx (%s).\n",
                         (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)), tname);
             }
+            fflush(stderr);
+            fsync(fileno(stderr));
             if (memtester_early_exit)
                 exit(4);
             /* printf("Skipping to next test..."); */
