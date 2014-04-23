@@ -374,12 +374,15 @@ int memtester_main(int argc, char **argv) {
             printf("/%lu", loops);
         }
         printf(":\n");
-        printf("  %-20s: ", "Stuck Address");
         fflush(stdout);
-        if (!test_stuck_address(aligned, bufsize / sizeof(ul))) {
-             printf("ok\n");
-        } else {
-            exit_code |= EXIT_FAIL_ADDRESSLINES;
+        if (!getenv("MEMTESTER_SKIP_STUCK_ADDRESS")) {
+            printf("  %-20s: ", "Stuck Address");
+            fflush(stdout);
+            if (!test_stuck_address(aligned, bufsize / sizeof(ul))) {
+                printf("ok\n");
+            } else {
+                exit_code |= EXIT_FAIL_ADDRESSLINES;
+            }
         }
         for (i=0;;i++) {
             if (!tests[i].name) break;
