@@ -11,10 +11,11 @@ fi
 $CC -DHAVE_NO_LIBMALI_BLOB -DMEMTESTER_MODE \
     -DMESA_EGL_NO_X11_HEADERS \
     -o lima-memtester \
-    -s -static -Os \
+    -static -Os \
     -Iinclude -Ilimare/lib -Ilimare/tests/common \
     main.c \
     memtester-4.3.0/memtester.c memtester-4.3.0/tests.c \
+    memtester-4.3.0/arm-asm-helpers.S \
     limare/lib/gp.c limare/lib/limare.c limare/lib/bmp.c limare/lib/program.c \
     limare/lib/plb.c limare/lib/dump.c limare/lib/hfloat.c limare/lib/render_state.c \
     limare/lib/pp.c limare/lib/fb.c limare/lib/texture.c limare/lib/jobs.c \

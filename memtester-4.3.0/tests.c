@@ -31,10 +31,45 @@ char progress[] = "-\\|/";
 
 int memtester_has_found_errors = 0;
 
+#ifdef __arm__
+typedef struct compare_regions_helper_result {
+    ul failed_index[8];
+    ul failed_value1[8];
+    ul failed_value2[8];
+} compare_regions_helper_result;
+
+void compare_regions_helper_neon(ulv *buf1, ulv *buf2, ul count,
+                                 compare_regions_helper_result *res);
+#endif
+
 size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count, ul *va, ul *vb) {
     size_t i, result = (size_t)(-1);
     ulv *p1 = bufa;
     ulv *p2 = bufb;
+
+#ifdef __arm__
+    if (count >= 16) {
+        int j;
+        int best_j = 0;
+        compare_regions_helper_result res;
+        compare_regions_helper_neon(bufa, bufb, count, &res);
+        for (j = 0; j < 8; j++) {
+            if (res.failed_index[j] == 0xFFFFFFFF)
+                continue;
+            if (res.failed_index[best_j] == 0xFFFFFFFF)
+                best_j = j;
+            if (res.failed_index[j] > res.failed_index[best_j]) {
+                best_j = j;
+            }
+        }
+        if (res.failed_index[best_j] != 0xFFFFFFFF) {
+            *va = res.failed_value1[best_j];
+            *vb = res.failed_value2[best_j];
+            return res.failed_index[best_j];
+        }
+        return (size_t)(-1);
+    }
+#endif
 
     for (i = 0; i < count; i++, p1++, p2++) {
         ul v1 = *p1, v2 = *p2;
