@@ -31,36 +31,57 @@ char progress[] = "-\\|/";
 
 int memtester_has_found_errors = 0;
 
-int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
-    int r = 0;
-    size_t i;
+size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count, ul *va, ul *vb) {
+    size_t i, result = (size_t)(-1);
     ulv *p1 = bufa;
     ulv *p2 = bufb;
-    off_t physaddr;
 
     for (i = 0; i < count; i++, p1++, p2++) {
-        if (*p1 != *p2) {
-            memtester_has_found_errors = 1;
-            if (use_phys) {
-                physaddr = physaddrbase + (i * sizeof(ul));
-                fprintf(stderr, 
-                        "FAILURE: 0x%08lx != 0x%08lx at physical address "
-                        "0x%08lx (%s).\n", 
-                        (ul) *p1, (ul) *p2, physaddr, tname);
-            } else {
-                fprintf(stderr, 
-                        "FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx (%s).\n",
-                        (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)), tname);
-            }
-            fflush(stderr);
-            fsync(fileno(stderr));
-            if (memtester_early_exit)
-                exit(4);
-            /* printf("Skipping to next test..."); */
-            r = -1;
+        ul v1 = *p1, v2 = *p2;
+        if (v1 != v2) {
+            *va = v1;
+            *vb = v2;
+            result = i;
         }
     }
-    return r;
+    return result;
+}
+
+int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
+    size_t i;
+    off_t physaddr;
+    size_t index1, index2;
+    ul v1a, v1b, v2a, v2b;
+    ul write_error = 0;
+
+    index1 = compare_regions_helper(bufa, bufb, count, &v1a, &v1b);
+    if (index1 == (size_t)(-1))
+        return 0;
+
+    /* second pass to confirm if the results are the same */
+    index2 = compare_regions_helper(bufa, bufb, count, &v2a, &v2b);
+
+    memtester_has_found_errors = 1;
+    if (use_phys) {
+        physaddr = physaddrbase + (ul)(index1 * sizeof(ul));
+        fprintf(stderr, 
+                "%s FAILURE: 0x%08lx != 0x%08lx at physical address "
+                "0x%08lx (%s).\n",
+                index1 == index2 ? "WRITE" : "READ",
+                v1a, v1b, physaddr, tname);
+    } else {
+        fprintf(stderr, 
+                "%s FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx (%s).\n",
+                index1 == index2 ? "WRITE" : "READ",
+                v1a, v1b, (ul)(index1 * sizeof(ul)), tname);
+    }
+    fflush(stderr);
+    fsync(fileno(stderr));
+    if (memtester_early_exit)
+        exit(4);
+
+    /* printf("Skipping to next test..."); */
+    return -1;
 }
 
 int test_stuck_address(ulv *bufa, size_t count) {
