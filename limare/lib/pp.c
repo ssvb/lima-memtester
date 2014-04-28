@@ -303,12 +303,18 @@ limare_m400_pp_job_start(struct limare_state *state, struct limare_frame *frame)
 							     frame_addr,
 							     stack_addr,
 							     &wb_regs);
-		else
+		else if (state->kernel_version < MALI_DRIVER_VERSION_R3P2_01REL2)
 			return limare_m400_pp_job_start_r3p2(state, frame,
 							     &frame_regs,
 							     frame_addr,
 							     stack_addr,
 							     &wb_regs);
+		else
+			return limare_m400_pp_job_start_r3p2_01rel2(state, frame,
+								    &frame_regs,
+								    frame_addr,
+								    stack_addr,
+								     &wb_regs);
 	}
 }
 

@@ -61,6 +61,13 @@ int limare_m400_pp_job_start_r3p2(struct limare_state *state,
 				  unsigned int addr_frame[7],
 				  unsigned int addr_stack[7],
 				  struct lima_pp_wb_registers *wb_regs);
+int limare_m400_pp_job_start_r3p2_01rel2(struct limare_state *state,
+					 struct limare_frame *frame,
+					 struct lima_m400_pp_frame_registers *
+					 frame_regs,
+					 unsigned int addr_frame[7],
+					 unsigned int addr_stack[7],
+					 struct lima_pp_wb_registers *wb_regs);
 
 void limare_jobs_init(struct limare_state *state);
 void limare_jobs_end(struct limare_state *state);
