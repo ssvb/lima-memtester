@@ -4,11 +4,19 @@ http://limadriver.org/ and http://pyropus.ca/software/memtester/
 Licensed under the terms of the GNU General Public License version 2 (only)
 because the license of memtester applies to this work as a whole.
 
-Native compilation can be done as:
-    $ ./build-lima-memtester-static-binary.sh
+Compilation instructions:
 
-Also it is possible to use ARM crosscompilers:
-    $ CC=arm-none-linux-gnueabi-gcc ./build-lima-memtester-static-binary.sh
+    cmake .
+    make -j2
+
+Now you should have the lima-memtester static binary. Running it only
+requires any Linux kernel with the mali400 kernel module version r3p2 or
+older and a framebuffer driver (for example, the sunxi-3.4 kernel using
+the default configuration satisfies these requirements). This test does
+not depend on anything in the userland and should work with any Linux
+distribution. It can be run with root privileges as:
+
+    ./lima-memtester 100M
 
 The usage is exactly the same as for the original memtester. The only
 difference is that a spinning textured cube demo is simultaneusly
@@ -30,7 +38,7 @@ pagesizemask is 0xfffff000
 want 1400MB (1468006400 bytes)
 got  1400MB (1468006400 bytes), trying mlock ...locked.
 Loop 1:
-  Stuck Address       : ok         
+  Stuck Address       : ok
   Random Value        : ok
   Compare XOR         : ok
   Compare SUB         : ok
