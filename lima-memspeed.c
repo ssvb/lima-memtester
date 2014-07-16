@@ -28,6 +28,7 @@
 #include <time.h>
 #include <errno.h>
 #include <assert.h>
+#include <math.h>
 #include <pthread.h>
 
 #include "limare.h"
@@ -163,6 +164,8 @@ int main(int argc, char *argv[])
 	int i, j, number_of_workloads = 0;
 	workload_t *workloads;
 	double t1, t2, bytes1, bytes2;
+	double s1, s2;
+	int n;
 	
 	if (argc < 2)
 		show_help_and_exit();
@@ -192,6 +195,9 @@ int main(int argc, char *argv[])
 	/* Warm-up */
 	sleep(1);
 
+	s1 = s2 = 0;
+	n = 0;
+
 	/* Do the bandwidth measurements (infinite loop) */
 	while (1) {
 		/* Save time and the bandwidth counters */
@@ -203,7 +209,9 @@ int main(int argc, char *argv[])
 		}
 		pthread_mutex_unlock(&bandwidth_counters_mutex);
 
-		sleep(5);
+		printf(".");
+		fflush(stdout);
+		sleep(2);
 
 		pthread_mutex_lock(&bandwidth_counters_mutex);
 		t2 = gettime();
@@ -212,10 +220,27 @@ int main(int argc, char *argv[])
 			bytes2 += workloads[i].bytes_counter;
 		}
 		pthread_mutex_unlock(&bandwidth_counters_mutex);
-	
-		printf("Total combined memory bandwidth: %.3f MB/s\n",
-		       (bytes2 - bytes1) / (t2 - t1) / 1000000.);
+
+		double bw = (bytes2 - bytes1) / (t2 - t1) / 1000000.;
+
+		n++;
+		s1 += bw;
+		s2 += bw * bw;
+		
+		if (n >= 3) {
+			double stddev = sqrt((n * s2 - s1 * s1) / (n * (n - 1)));
+			double sem = stddev / sqrt(n);
+
+			if (sem < (s1 / n) * 0.002)
+				break;
+		}
+
+		if (n >= 15)
+			break;
 	}
+
+	printf("\n");
+	printf("Total combined memory bandwidth: %.1f MB/s\n", (s1 / n));
 
 	return 0;
 }
