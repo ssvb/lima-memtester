@@ -21,27 +21,10 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef LIMA_MEMSPEED_H
-#define LIMA_MEMSPEED_H
+#ifndef MEMSPEED_FB_H
+#define MEMSPEED_FB_H
 
-#include <pthread.h>
-
-extern pthread_mutex_t bandwidth_counters_mutex;
-
-double gettime(void);
-
-typedef struct workload_t
-{
-	const char *name;
-	const char *description;
-
-	double bytes_counter;
-
-	void *(*thread_func)(void *);
-	pthread_t thread_id;
-
-	void *extra_data;
-	int size_multiplier;
-} workload_t;
+void *fb_blank_thread(void *data);
+void *fb_scanout_thread(void *data);
 
 #endif

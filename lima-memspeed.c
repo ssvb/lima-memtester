@@ -36,12 +36,13 @@
 #include "lima-memspeed.h"
 #include "arm-neon.h"
 #include "memspeed_gpu.h"
+#include "memspeed_fb.h"
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(a)  (sizeof((a)) / sizeof((a)[0]))
 #endif
 
-static double gettime(void)
+double gettime(void)
 {
 	struct timespec t;
 	int clock_gettime_result = clock_gettime(CLOCK_MONOTONIC, &t);
@@ -83,6 +84,16 @@ static void *cpu_thread(void *data)
 }
 
 static workload_t workloads_list[] = {
+	{
+		.name = "fb_blank",
+		.description = "blank the screen in order not to drain memory bandwidth",
+		.thread_func = fb_blank_thread,
+	},
+	{
+		.name = "fb_scanout",
+		.description = "take the framebuffer scanout bandwidth into account",
+		.thread_func = fb_scanout_thread,
+	},
 	{
 		.name = "gpu_write",
 		.description = "use the lima driver to solid fill the screen",

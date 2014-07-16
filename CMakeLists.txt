@@ -42,7 +42,7 @@ set_target_properties(lima-memtester PROPERTIES COMPILE_DEFINITIONS "MEMTESTER_M
 target_link_libraries(lima-memtester m rt ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(lima-memspeed
-               lima-memspeed.c memspeed_gpu.c arm-neon.S arm-neon.h
+               lima-memspeed.c memspeed_gpu.c memspeed_fb.c arm-neon.S arm-neon.h
                load_mali_kernel_module.c
                limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
                limadriver/limare/lib/bmp.c limadriver/limare/lib/program.c
