@@ -9,6 +9,7 @@ include_directories(limadriver/include limadriver/limare/lib
                     limadriver/limare/tests/common)
 
 add_executable(lima-textured-cube
+               textured_cube_mainloop.c
                limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
                limadriver/limare/lib/bmp.c limadriver/limare/lib/program.c
                limadriver/limare/lib/plb.c limadriver/limare/lib/dump.c
@@ -16,7 +17,6 @@ add_executable(lima-textured-cube
                limadriver/limare/lib/pp.c limadriver/limare/lib/fb.c
                limadriver/limare/lib/texture.c limadriver/limare/lib/jobs.c
                limadriver/limare/lib/symbols.c
-               limadriver/limare/tests/cube_textured_spinning/limare.c
                limadriver/limare/tests/common/companion_texture_flat.c
                limadriver/limare/tests/common/cube_mesh.c
                limadriver/limare/tests/common/esTransform.c)
@@ -24,7 +24,7 @@ add_executable(lima-textured-cube
 target_link_libraries(lima-textured-cube m rt ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(lima-memtester
-               main.c
+               main.c textured_cube_mainloop.c
                memtester-4.3.0/memtester.c memtester-4.3.0/tests.c
                memtester-4.3.0/arm-asm-helpers.S
                limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
@@ -34,7 +34,6 @@ add_executable(lima-memtester
                limadriver/limare/lib/pp.c limadriver/limare/lib/fb.c
                limadriver/limare/lib/texture.c limadriver/limare/lib/jobs.c
                limadriver/limare/lib/symbols.c
-               limadriver/limare/tests/cube_textured_spinning/limare.c
                limadriver/limare/tests/common/companion_texture_flat.c
                limadriver/limare/tests/common/cube_mesh.c
                limadriver/limare/tests/common/esTransform.c)
