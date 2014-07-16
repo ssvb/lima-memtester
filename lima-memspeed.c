@@ -89,6 +89,11 @@ static workload_t workloads_list[] = {
 		.thread_func = gpu_write_thread,
 	},
 	{
+		.name = "gpu_copy",
+		.description = "use the lima driver to copy a texture to the screen",
+		.thread_func = gpu_copy_thread,
+	},
+	{
 		.name = "neon_write",
 		.description = "use ARM NEON to fill a memory buffer",
 		.thread_func = cpu_thread,

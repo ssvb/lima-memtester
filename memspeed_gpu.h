@@ -24,5 +24,6 @@
 #define MEMSPEED_GPU_H
 
 void *gpu_write_thread(void *data);
+void *gpu_copy_thread(void *data);
 
 #endif
