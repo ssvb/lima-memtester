@@ -21,14 +21,9 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include <pthread.h>
-#include <unistd.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-
-int textured_cube_main(void);
-int memtester_main(int argc, char *argv[]);
 
 static void check_kernel_cmdline(void)
 {
@@ -50,45 +45,12 @@ static void check_kernel_cmdline(void)
 	fclose(f);
 }
 
-static void *lima_thread(void *threadid)
+void load_mali_kernel_module(void)
 {
-	textured_cube_main();
-	/* If we reach here, something bad has happened */
-	abort();
-	return NULL;
-}
-
-static void start_lima_thread(void)
-{
-	pthread_t th;
-
 	check_kernel_cmdline();
 
 	if (system("modprobe mali >/dev/null 2>&1")) {
 		fprintf(stderr, "Failed to 'modprobe mali'.\n");
 		abort();
 	}
-
-	pthread_create(&th, NULL, lima_thread, NULL);
-
-	/* Wait a bit and let lima stop spamming to the console */
-	usleep(300000);
-
-	printf("\n");
-}
-
-int main (int argc, char *argv[])
-{
-	printf("This is a simple textured cube demo from the lima driver and\n");
-	printf("a memtester. Both combined in a single program. The mali400\n");
-	printf("hardware is only used to stress RAM in the background. But\n");
-	printf("this happens to significantly increase chances of exposing\n");
-	printf("memory stability related problems.\n\n");
-
-	if (argc > 1)
-		start_lima_thread();
-
-	memtester_main(argc, argv);
-
-	return 0;
 }

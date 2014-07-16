@@ -9,7 +9,7 @@ include_directories(limadriver/include limadriver/limare/lib
                     limadriver/limare/tests/common)
 
 add_executable(lima-textured-cube
-               textured_cube_mainloop.c
+               lima-textured-cube.c textured_cube_mainloop.c load_mali_kernel_module.c
                limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
                limadriver/limare/lib/bmp.c limadriver/limare/lib/program.c
                limadriver/limare/lib/plb.c limadriver/limare/lib/dump.c
@@ -24,7 +24,7 @@ add_executable(lima-textured-cube
 target_link_libraries(lima-textured-cube m rt ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(lima-memtester
-               main.c textured_cube_mainloop.c
+               lima-memtester.c textured_cube_mainloop.c load_mali_kernel_module.c
                memtester-4.3.0/memtester.c memtester-4.3.0/tests.c
                memtester-4.3.0/arm-asm-helpers.S
                limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
