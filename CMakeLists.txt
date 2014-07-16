@@ -41,4 +41,21 @@ add_executable(lima-memtester
 set_target_properties(lima-memtester PROPERTIES COMPILE_DEFINITIONS "MEMTESTER_MODE")
 target_link_libraries(lima-memtester m rt ${CMAKE_THREAD_LIBS_INIT})
 
-install_programs(/bin FILES lima-textured-cube lima-memtester)
+add_executable(lima-memspeed
+               lima-memspeed.c memspeed_gpu.c arm-neon.S arm-neon.h
+               load_mali_kernel_module.c
+               limadriver/limare/lib/gp.c limadriver/limare/lib/limare.c
+               limadriver/limare/lib/bmp.c limadriver/limare/lib/program.c
+               limadriver/limare/lib/plb.c limadriver/limare/lib/dump.c
+               limadriver/limare/lib/hfloat.c limadriver/limare/lib/render_state.c
+               limadriver/limare/lib/pp.c limadriver/limare/lib/fb.c
+               limadriver/limare/lib/texture.c limadriver/limare/lib/jobs.c
+               limadriver/limare/lib/symbols.c
+               limadriver/limare/tests/common/companion_texture_flat.c
+               limadriver/limare/tests/common/cube_mesh.c
+               limadriver/limare/tests/common/esTransform.c)
+
+target_link_libraries(lima-memspeed m rt ${CMAKE_THREAD_LIBS_INIT})
+
+
+install_programs(/bin FILES lima-textured-cube lima-memtester lima-memspeed)
