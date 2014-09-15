@@ -22,14 +22,34 @@
  */
 
 #include <pthread.h>
+#include <assert.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <linux/fb.h>
 #include "load_mali_kernel_module.h"
 
 int textured_cube_main(void);
 int memtester_main(int argc, char *argv[]);
+
+void *fb_unblank_thread(void *data)
+{
+	int fd, ret;
+
+	fd = open("/dev/fb0", O_RDWR);
+	assert(fd != -1);
+
+	while (1) {
+		ret = ioctl(fd, FBIOBLANK, FB_BLANK_UNBLANK);
+		assert(!ret);
+		sleep(1);
+	}
+
+	close(fd);
+	return 0;
+}
 
 static void *lima_thread(void *threadid)
 {
@@ -41,10 +61,11 @@ static void *lima_thread(void *threadid)
 
 static void start_lima_thread(void)
 {
-	pthread_t th;
+	pthread_t th1, th2;
 
 	load_mali_kernel_module();
-	pthread_create(&th, NULL, lima_thread, NULL);
+	pthread_create(&th1, NULL, lima_thread, NULL);
+	pthread_create(&th2, NULL, fb_unblank_thread, NULL);
 
 	/* Wait a bit and let lima stop spamming to the console */
 	usleep(300000);
