@@ -9,6 +9,10 @@ Compilation instructions:
     cmake .
     make -j2
 
+Or alternatively, just download a pre-built static binary from:
+
+    https://github.com/ssvb/lima-memtester/releases
+
 Now you should have the lima-memtester static binary. Running it only
 requires any Linux kernel with the mali400 kernel module version r3p2 or
 older and a framebuffer driver (for example, the sunxi-3.4 kernel using
@@ -25,9 +29,16 @@ on Allwinner A10 and Allwinner A20 hardware have shown that Mali400
 usually starts misbehaving first. Exposing faults, which are very
 difficult to reproduce on CPU-only workloads.
 
-If the hardware is unstable (for example RAM is clocked too high), the
-system may deadlock after running this test for a while. Or the test
-may start showing the following error messages in the console:
+If the hardware is working fine, then the spinning cube animation on
+a gray background will be running non-stop. For better confidence, it
+is a good idea to let it run for at least a few hours.
+
+If the hardware is very unstable, then the system may deadlock instantly
+even before showing anything on the screen. If the hardware is moderately
+unstable, then the cube animation may freeze after running for a while.
+If memory corruption problems are detected, then the animation may switch
+to a pulsing red background (instead of the default gray), together with
+something like the following error messages in the console:
 
 memtester version 4.3.0 (32-bit)
 Copyright (C) 2001-2012 Charles Cazabon.
@@ -51,3 +62,14 @@ Loop 1:
 FAILURE: 0x00000000 != 0x000000ff at offset 0x099e03c0.
 FAILURE: 0xffffffff != 0xffffff00 at offset 0x099e03c4.
 FAILURE: 0x00000000 != 0x000000ff at offset 0x099e03c8.
+
+The reliability problems can be usually resolved by downclocking DRAM
+and/or adjusting voltages until the lima-memtester program starts working
+fine. On Allwinner hardware, DRAM is configured in the u-boot bootloader,
+so that's the right place to apply the changes.
+
+It is also a very good idea to ensure at least some safety headroom. For
+example, make sure that the test does not detect problems at some DRAM clock
+frequency, and then reduce it at least by one step (lower DRAM clock speed
+means better reliability). And do a similar thing with the voltage (higher
+voltage usually means better reliability).
