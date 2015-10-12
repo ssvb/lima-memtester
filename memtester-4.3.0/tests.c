@@ -42,7 +42,22 @@ void compare_regions_helper_neon(ulv *buf1, ulv *buf2, ul count,
                                  compare_regions_helper_result *res);
 #endif
 
-size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count, ul *va, ul *vb) {
+/* Space optimized CRC32 code (without using tables) */
+static ul crc32(ul crc, void *buffer, int size)
+{
+    unsigned char *buf = (void *)buffer;
+    int bitnum;
+    crc = ~crc;
+    while (size--) {
+        crc ^= *buf++;
+        for (bitnum = 0; bitnum < 8; bitnum++)
+            crc = crc & 1 ? (crc >> 1) ^ 0xedb88320 : crc >> 1;
+    }
+    return ~crc;
+}
+
+size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count,
+                              ul *va, ul *vb, ul *crc) {
     size_t i, result = (size_t)(-1);
     ulv *p1 = bufa;
     ulv *p2 = bufb;
@@ -53,6 +68,7 @@ size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count, ul *va, ul *vb
         int best_j = 0;
         compare_regions_helper_result res;
         compare_regions_helper_neon(bufa, bufb, count, &res);
+        *crc = crc32(0, &res, sizeof(res));
         for (j = 0; j < 8; j++) {
             if (res.failed_index[j] == 0xFFFFFFFF)
                 continue;
@@ -79,6 +95,7 @@ size_t compare_regions_helper(ulv *bufa, ulv *bufb, size_t count, ul *va, ul *vb
             result = i;
         }
     }
+    *crc = crc32(0, &result, sizeof(result));
     return result;
 }
 
@@ -87,14 +104,21 @@ int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
     off_t physaddr;
     size_t index1, index2;
     ul v1a, v1b, v2a, v2b;
-    ul write_error = 0;
+    ul crc1, crc2;
+    ul write_error = 1;
 
-    index1 = compare_regions_helper(bufa, bufb, count, &v1a, &v1b);
+    index1 = compare_regions_helper(bufa, bufb, count, &v1a, &v1b, &crc1);
     if (index1 == (size_t)(-1))
         return 0;
 
-    /* second pass to confirm if the results are the same */
-    index2 = compare_regions_helper(bufa, bufb, count, &v2a, &v2b);
+    /* additional passes to confirm if the results are the same */
+    for (i = 0; i < 32; i++) {
+        index2 = compare_regions_helper(bufa, bufb, count, &v2a, &v2b, &crc2);
+        if (index1 != index2 || crc1 != crc2) {
+            write_error = 0;
+            break;
+        }
+    }
 
     memtester_has_found_errors = 1;
     if (use_phys) {
@@ -102,12 +126,12 @@ int compare_regions(const char *tname, ulv *bufa, ulv *bufb, size_t count) {
         fprintf(stderr, 
                 "%s FAILURE: 0x%08lx != 0x%08lx at physical address "
                 "0x%08lx (%s).\n",
-                index1 == index2 ? "WRITE" : "READ",
+                write_error ? "WRITE" : "READ",
                 v1a, v1b, physaddr, tname);
     } else {
         fprintf(stderr, 
                 "%s FAILURE: 0x%08lx != 0x%08lx at offset 0x%08lx (%s).\n",
-                index1 == index2 ? "WRITE" : "READ",
+                write_error ? "WRITE" : "READ",
                 v1a, v1b, (ul)(index1 * sizeof(ul)), tname);
     }
     fflush(stderr);
