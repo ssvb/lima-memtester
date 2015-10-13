@@ -42,11 +42,11 @@ struct test tests[] = {
     { "Compare OR", test_or_comparison },
     { "Compare AND", test_and_comparison },
     { "Sequential Increment", test_seqinc_comparison },
-    { "Solid Bits", test_solidbits_comparison },
+    { "Bit Flip", test_bitflip_comparison },
     { "Block Sequential", test_blockseq_comparison },
     { "Checkerboard", test_checkerboard_comparison },
     { "Bit Spread", test_bitspread_comparison },
-    { "Bit Flip", test_bitflip_comparison },
+    { "Solid Bits", test_solidbits_comparison },
     { "Walking Ones", test_walkbits1_comparison },
     { "Walking Zeroes", test_walkbits0_comparison },
 #ifdef TEST_NARROW_WRITES    
