@@ -105,6 +105,7 @@ static workload_t workloads_list[] = {
 		.description = "use the lima driver to copy a texture to the screen",
 		.thread_func = gpu_copy_thread,
 	},
+#ifdef __ARM__
 	{
 		.name = "neon_write",
 		.description = "use ARM NEON to fill a memory buffer",
@@ -136,6 +137,7 @@ static workload_t workloads_list[] = {
 		.extra_data = aligned_block_copy_pf64_neon,
 		.size_multiplier = 2,
 	},
+#endif
 };
 
 static void show_help_and_exit(void)
