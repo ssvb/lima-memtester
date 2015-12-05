@@ -24,6 +24,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 static void check_kernel_cmdline(void)
 {
@@ -47,7 +50,15 @@ static void check_kernel_cmdline(void)
 
 void load_mali_kernel_module(void)
 {
+	int fd;
+
 	check_kernel_cmdline();
+
+	fd = open("/dev/mali", O_RDWR);
+	if (fd != -1) {
+		close(fd);
+		return;
+	}
 
 	if (system("modprobe mali >/dev/null 2>&1")) {
 		fprintf(stderr, "Failed to 'modprobe mali'.\n");
