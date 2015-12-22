@@ -1,0 +1,138 @@
+#!/usr/bin/env ruby
+#
+# Copyright © 2015 Siarhei Siamashka <siarhei.siamashka@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice (including the next
+# paragraph) shall be included in all copies or substantial portions of the
+# Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
+
+###############################################################################
+# Assuming Gaussian distribution of the DRAM clock speeds where the           #
+# lima-memtester test starts to detect reliability problems due to variances  #
+# between different board samples (but the same board model!), predict how    #
+# many boards of the same type are expected to pass/fail the test at each     #
+# DRAM clock speed.                                                           #
+#                                                                             #
+# If a "good" DRAM clock frequency (passes the test) is 672 MHz and a "bad"   #
+# clock frequency is 696 MHz, then we are assuming that the cross over point  #
+# is somewhere in the middle. So we want to pass the "(672 + 696) / 2" value  #
+# into this script. In order to make this easier, there is the <freq_delta>   #
+# command line argument, which can be used to add a 12 MHz shift to the       #
+# "good" value or subtract 12 MHz from the "bad" value. It is a convenience   #
+# feature to avoid maual adjustment of the DRAM clock frequency lists         #
+# used as input for this script.                                              #
+###############################################################################
+
+require 'tempfile'
+
+if ARGV.size < 1
+  printf("Usage: #{$PROGRAM_NAME} <freq_delta> <png_file>\n")
+  printf("Where:\n")
+  printf("    freq_delta  - adjustment for the frequency.\n")
+  printf("    png_file    - resulting PNG file with the plot.\n")
+  printf("\n")
+  printf("This script reads the list of space separated DRAM clock\n")
+  printf("frequency values from STDIN, adds <freq_delta> to them and\n")
+  printf("generates a gnuplot chart\n")
+  exit(1)
+end
+
+###############################################################################
+# Analyze data, calculate probabilities                                       #
+###############################################################################
+
+freq_delta = ARGV[0].to_f
+
+printf("Frequency shift : %d MHz\n", freq_delta.to_i)
+samples = STDIN.read.split.map {|x| x.to_f + freq_delta }
+printf("Processing data : %s\n", samples.map {|x| x.to_i })
+abort "As least two DRAM clock speed samples are needed" if samples.size < 2
+
+sample_mean   = samples.reduce(:+) / samples.size.to_f
+sample_stddev = Math.sqrt(samples.reduce(0) {|sum, x| sum + (x - sample_mean) ** 2} /
+                            (samples.size - 1))
+
+printf("Sample mean     : %f\n", sample_mean)
+printf("Sample stddev   : %f\n", sample_stddev)
+
+# https://en.wikipedia.org/wiki/Normal_distribution#Cumulative_distribution_function
+def cumulative_distribution_function(x, sample_mean, sample_stddev)
+  return 0.5 * (1 + Math.erf((x - sample_mean) / (sample_stddev * Math.sqrt(2))))
+end
+
+printf("{| class=\"wikitable\"\n")
+printf("! DRAM clock speed ")
+printf("|| Share of boards expected to fail the lima-memtester test\n")
+
+freq = 816
+while true
+  p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+  break if p < 0.0001 || freq == 360
+  freq -= 24
+end
+
+while freq <= 816
+  p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+  printf("|-\n| %.0f MHz|| %.2f %%\n", freq, p * 100)
+  break if p >= 0.99
+  freq += 24
+end
+printf("|}\n")
+
+###############################################################################
+# Gnuplot                                                                     #
+###############################################################################
+
+if ARGV.size >= 2
+  # Test the availability of the required tools
+  def tool_exists(tool_name)
+    `which #{tool_name} > /dev/null 2>&1`
+    if $?.to_i != 0 then
+      printf("Error: the required '%s' executable is not found in PATH\n", tool_name)
+      return false
+    else
+      return true
+    end
+  end
+  exit(1) unless tool_exists("gnuplot")
+  pngfile = ARGV[1]
+
+  tmp = Tempfile.new("lima-memetster-genchart")
+  (360..816).step(4) do |freq|
+    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+    tmp.printf("%f %f\n", freq, p * 100)
+  end
+  tmp.flush
+
+  IO.popen("gnuplot", "w") do |fh|
+    fh.write "
+      set terminal png size 800, 600
+      set output '#{pngfile}'
+      set format y '%.0f'
+      set xtics 24
+      set ytics (1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)
+      set grid xtics ytics
+      set xrange [360:816]
+      set yrange [0:103]
+      set xlabel 'DRAM clock frequency, MHz'
+      set ylabel 'Share of boards expected to fail the lima-memtester test, %'
+      set style line 1 lc rgb '#0060ff' lt 1 lw 2 pt 7 pi 6 ps 0
+      plot '#{tmp.path}' using 1:2 with linespoints ls 1 notitle
+    "
+  end
+end
