@@ -48,7 +48,17 @@ if ARGV.size < 1
   printf("\n")
   printf("This script reads the list of space separated DRAM clock\n")
   printf("frequency values from STDIN, adds <freq_delta> to them and\n")
-  printf("generates a gnuplot chart\n")
+  printf("generates a gnuplot chart. Several groups of DRAM clock\n")
+  printf("frequencies can be also comma separated and shown on the\n")
+  printf("same chart using different colors (blue, green, red, pink).\n")
+  printf("\n")
+  printf("Example:\n")
+  printf("    echo '672 696, 648 648 672' | lima-memtester-genchart 12 out.png\n")
+  printf("\n")
+  printf("In this example the cumulative distribution function for the data\n")
+  printf("set [684 708] will be shown as a blue line and the cumulative\n")
+  printf("distribution function for the set [660 660 684] will be shown\n")
+  printf("as a green line in the 'out.png' output file.\n")
   exit(1)
 end
 
@@ -59,40 +69,53 @@ end
 freq_delta = ARGV[0].to_f
 
 printf("Frequency shift : %d MHz\n", freq_delta.to_i)
-samples = STDIN.read.split.map {|x| x.to_f + freq_delta }
-printf("Processing data : %s\n", samples.map {|x| x.to_i })
-abort "As least two DRAM clock speed samples are needed" if samples.size < 2
 
-sample_mean   = samples.reduce(:+) / samples.size.to_f
-sample_stddev = Math.sqrt(samples.reduce(0) {|sum, x| sum + (x - sample_mean) ** 2} /
+data_sets = STDIN.read.split(",").map {|s| s.split.map {|x| x.to_f + freq_delta }}
+gnuplot_data = []
+
+data_sets.each do |samples|
+  printf("Processing data : %s\n", samples.map {|x| x.to_i })
+  abort "As least two DRAM clock speed samples are needed" if samples.size < 2
+
+  sample_mean   = samples.reduce(:+) / samples.size.to_f
+  sample_stddev = Math.sqrt(samples.reduce(0) {|sum, x| sum + (x - sample_mean) ** 2} /
                             (samples.size - 1))
 
-printf("Sample mean     : %f\n", sample_mean)
-printf("Sample stddev   : %f\n", sample_stddev)
+  printf("Sample mean     : %f\n", sample_mean)
+  printf("Sample stddev   : %f\n", sample_stddev)
 
-# https://en.wikipedia.org/wiki/Normal_distribution#Cumulative_distribution_function
-def cumulative_distribution_function(x, sample_mean, sample_stddev)
-  return 0.5 * (1 + Math.erf((x - sample_mean) / (sample_stddev * Math.sqrt(2))))
+  # https://en.wikipedia.org/wiki/Normal_distribution#Cumulative_distribution_function
+  def cumulative_distribution_function(x, sample_mean, sample_stddev)
+    return 0.5 * (1 + Math.erf((x - sample_mean) / (sample_stddev * Math.sqrt(2))))
+  end
+
+  printf("{| class=\"wikitable\"\n")
+  printf("! DRAM clock speed ")
+  printf("|| Share of boards expected to fail the lima-memtester test\n")
+
+  freq = 816
+  while true
+    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+    break if p < 0.0001 || freq == 360
+    freq -= 24
+  end
+
+  while freq <= 816
+    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+    printf("|-\n| %.0f MHz|| %.2f %%\n", freq, p * 100)
+    break if p >= 0.99
+    freq += 24
+  end
+  printf("|}\n")
+
+  tmp = Tempfile.new("lima-memetster-genchart")
+  (360..816).step(4) do |freq|
+    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+    tmp.printf("%f %f\n", freq, p * 100)
+  end
+  tmp.flush
+  gnuplot_data.push(tmp)
 end
-
-printf("{| class=\"wikitable\"\n")
-printf("! DRAM clock speed ")
-printf("|| Share of boards expected to fail the lima-memtester test\n")
-
-freq = 816
-while true
-  p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-  break if p < 0.0001 || freq == 360
-  freq -= 24
-end
-
-while freq <= 816
-  p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-  printf("|-\n| %.0f MHz|| %.2f %%\n", freq, p * 100)
-  break if p >= 0.99
-  freq += 24
-end
-printf("|}\n")
 
 ###############################################################################
 # Gnuplot                                                                     #
@@ -112,13 +135,6 @@ if ARGV.size >= 2
   exit(1) unless tool_exists("gnuplot")
   pngfile = ARGV[1]
 
-  tmp = Tempfile.new("lima-memetster-genchart")
-  (360..816).step(4) do |freq|
-    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-    tmp.printf("%f %f\n", freq, p * 100)
-  end
-  tmp.flush
-
   IO.popen("gnuplot", "w") do |fh|
     fh.write "
       set terminal png size 800, 600
@@ -131,8 +147,17 @@ if ARGV.size >= 2
       set yrange [0:103]
       set xlabel 'DRAM clock frequency, MHz'
       set ylabel 'Share of boards expected to fail the lima-memtester test, %'
+      # blue
       set style line 1 lc rgb '#0060ff' lt 1 lw 2 pt 7 pi 6 ps 0
-      plot '#{tmp.path}' using 1:2 with linespoints ls 1 notitle
-    "
+      # green
+      set style line 2 lc rgb '#32cd32' lt 1 lw 2 pt 7 pi 6 ps 0
+      # red
+      set style line 3 lc rgb '#ff4500' lt 1 lw 2 pt 7 pi 6 ps 0
+      # pink
+      set style line 4 lc rgb '#ff1493' lt 1 lw 2 pt 7 pi 6 ps 0
+      plot "
+    fh.write gnuplot_data.map.with_index {|data, idx|
+      "'#{data.path}' using 1:2 with linespoints ls #{idx + 1} notitle"
+    }.join(",")
   end
 end
