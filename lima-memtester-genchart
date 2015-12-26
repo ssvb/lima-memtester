@@ -161,6 +161,7 @@ printf("Frequency shift   : %d MHz\n", freq_delta.to_i)
 printf("Binning interval  : %d MHz\n", $binning_interval)
 
 data_sets = STDIN.read.split(",").map {|s| s.split.map {|x| x.to_f + freq_delta }}
+
 gnuplot_data = []
 
 data_sets.each do |samples|
@@ -184,19 +185,24 @@ data_sets.each do |samples|
   end
   printf("Shapiro-Wilk test : p=%s\n", p_values) if p_values.size > 0
 
+  # Analyze the frequencies range plus/minus six standard deviations from the mean
+  mid_freq = sample_mean.to_i / $binning_interval * $binning_interval
+  min_freq = mid_freq - (sample_stddev * 6).to_i / $binning_interval * $binning_interval
+  max_freq = mid_freq + (sample_stddev * 6).to_i / $binning_interval * $binning_interval
+
   printf("\n")
   printf("{| class=\"wikitable\"\n")
   printf("! DRAM clock speed ")
   printf("|| Share of boards expected to fail the lima-memtester test\n")
 
-  freq = 816
+  freq = max_freq
   while true
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-    break if p < 0.0001 || freq <= 360
+    break if p < 0.0001 || freq <= min_freq
     freq -= $binning_interval
   end
 
-  while freq <= 816
+  while freq <= max_freq
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
     printf("|-\n| %.0f MHz|| %.2f %%\n", freq, p * 100)
     break if p >= 0.99
@@ -205,7 +211,7 @@ data_sets.each do |samples|
   printf("|}\n")
 
   tmp = Tempfile.new("lima-memetster-genchart")
-  (360..816).step(4) do |freq|
+  (min_freq..max_freq).step(4) do |freq|
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
     tmp.printf("%f %f\n", freq, p * 100)
   end
