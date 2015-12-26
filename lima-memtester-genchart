@@ -162,6 +162,7 @@ printf("Binning interval  : %d MHz\n", $binning_interval)
 
 data_sets = STDIN.read.split(",").map {|s| s.split.map {|x| x.to_f + freq_delta }}
 
+multinomial_data = []
 gnuplot_data = []
 
 data_sets.each do |samples|
@@ -190,6 +191,22 @@ data_sets.each do |samples|
   min_freq = mid_freq - (sample_stddev * 6).to_i / $binning_interval * $binning_interval
   max_freq = mid_freq + (sample_stddev * 6).to_i / $binning_interval * $binning_interval
 
+  tmp = {}
+  tmp[:mean] = sample_mean
+  tmp[:stddev] = sample_stddev
+  tmp[:observed] = {}
+  tmp[:prob] = {}
+  (min_freq..max_freq).step($binning_interval) do |freq|
+    cdf2 = cumulative_distribution_function(freq + $binning_interval,
+                                            sample_mean, sample_stddev)
+    cdf1 = cumulative_distribution_function(freq, sample_mean, sample_stddev)
+    tmp[:prob][freq] = cdf2 - cdf1
+    tmp[:observed][freq] = samples.reduce(0) do |sum, x|
+      sum += ((x >= freq && x < freq + $binning_interval) ? 1 : 0)
+    end
+  end
+  multinomial_data.push(tmp)
+
   printf("\n")
   printf("{| class=\"wikitable\"\n")
   printf("! DRAM clock speed ")
@@ -217,6 +234,37 @@ data_sets.each do |samples|
   end
   tmp.flush
   gnuplot_data.push(tmp)
+end
+
+###############################################################################
+# Multinomial test (by calling an external R programming language interpreter #
+# with EMT library). If there are two sets of DRAM clock frequencies provided #
+# (separated by ',') then use the first set for training and the second set   #
+# for testing.                                                                #
+###############################################################################
+
+if multinomial_data.size >= 1
+  cutoff_prob = 0.0001
+  train_idx = 0
+  test_idx  = (multinomial_data.size >= 2 ? 1 : 0)
+  tmp = {}
+  multinomial_data[train_idx][:prob].each do |freq, prob|
+    tmp[freq] = [prob, 0] if prob >= cutoff_prob
+  end
+  multinomial_data[test_idx][:observed].each do |freq, observed|
+    prob = (multinomial_data[train_idx][:prob][freq] || 0.0)
+    next if observed == 0 && prob < cutoff_prob
+    tmp[freq] = [prob, observed]
+  end
+  tmp = tmp.sort
+
+  # http://www.inside-r.org/packages/cran/emt/docs/multinomial.test
+  r_input  = sprintf("library(XNomial)\n\n")
+  r_input += sprintf("prob <- c(%s)\n", tmp.map {|x| x[1][0]}.join(", "))
+  r_input += sprintf("observed <- c(%s)\n", tmp.map {|x| x[1][1]}.join(", "))
+  r_input += sprintf("out <- xmulti(observed, prob, detail=3)\n")
+  r_output = `echo '#{r_input}' | R --vanilla 2>/dev/null`
+  printf("%s\n", r_output) if r_output
 end
 
 ###############################################################################
