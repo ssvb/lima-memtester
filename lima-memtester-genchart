@@ -66,6 +66,51 @@ freq_delta = ARGV[0].to_f
 $binning_interval = (freq_delta.abs * 2).to_i
 
 ###############################################################################
+# Parse html page from mediawiki                                              #
+###############################################################################
+
+def html_parse(data)
+  out = []
+  data.scan(/(<table\s+class=\"wikitable\">)(.*?)(<\/table>)/m) do |_, tbl, _|
+    result1 = []
+    tbl.scan(/(<tr>)(.*?)(<\/tr>)/m) do |_, row, _|
+      tmp = []
+      row.scan(/(<th>)(.*?)(<\/th>)/m) { |_, x, _| tmp.push(x.strip) }
+      row.scan(/(<td>)(.*?)(<\/td>)/m) { |_, x, _| tmp.push(x.strip) }
+      result1.push(tmp)
+    end
+
+    if result1.size > 1 && ((result1[0][2] =~ /lima\-memtester passes/) &&
+                            (result1[0][3] =~ /lima\-memtester fails/))
+      good_table = true
+
+      # Select only rows with exactly 5 columns
+      result2 = result1.select { |x| x.size == 5 }
+
+      # The first sanity check
+      good_table = false if result2.size != result1.size
+
+      # Remove the table header
+      result2.shift if good_table
+
+      # Extract the DRAM clock frequencies (the cross over point)
+      result3 = result2.map do |x|
+        lo = x[2].gsub(/<[\/]?b>/, "").to_i
+        hi = x[3].gsub(/<[\/]?b>/, "").to_i
+        $binning_interval = (hi - lo) if $binning_interval == 0
+        if lo == 0 || hi == 0 || lo >= hi || (hi - lo) != $binning_interval
+          printf("Problems parsing row %s\n", x)
+          good_table = false
+        end
+        (lo + hi).to_f / 2
+      end
+      out.push(result3) if good_table
+    end
+  end
+  return out
+end
+
+###############################################################################
 # Combine multiple p-values to get a single aggregate one                     #
 ###############################################################################
 
@@ -173,11 +218,16 @@ end
 # Analyze data, calculate probabilities                                       #
 ###############################################################################
 
+if ARGV[0] =~ /^http/
+  require 'open-uri'
+  html_data = open(ARGV[0], &:read)
+  data_sets = html_parse(html_data)
+else
+  data_sets = STDIN.read.split(",").map {|s| s.split.map {|x| x.to_f + freq_delta }}
+end
 
 printf("Frequency shift   : %d MHz\n", freq_delta.to_i)
 printf("Binning interval  : %d MHz\n", $binning_interval)
-
-data_sets = STDIN.read.split(",").map {|s| s.split.map {|x| x.to_f + freq_delta }}
 
 multinomial_data = []
 gnuplot_data = []
