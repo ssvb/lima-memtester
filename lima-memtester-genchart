@@ -88,6 +88,23 @@ def combine_p_values_using_fisher_method(a)
 end
 
 ###############################################################################
+# Chebyshev's inequality for lower semivariance                               #
+###############################################################################
+
+# https://en.wikipedia.org/wiki/Chebyshev%27s_inequality#Semivariances
+def chebyshev_lower_semivariance_p(samples, val)
+  sample_mean   = samples.reduce(:+) / samples.size.to_f
+  lower_semivariance = samples.select {|x| x < sample_mean }.reduce(0) {|sum, x|
+                          sum + (x - sample_mean) ** 2} / (samples.size - 1)
+  a = (sample_mean - val) / Math.sqrt(lower_semivariance)
+  if val < sample_mean
+    [1.0 / (a * a), 1.0].min
+  else
+    1.0
+  end
+end
+
+###############################################################################
 # Shapiro-Wilk test of normality (by calling an external R programming
 # language interpreter)
 ###############################################################################
@@ -209,19 +226,33 @@ data_sets.each do |samples|
 
   printf("\n")
   printf("{| class=\"wikitable\"\n")
-  printf("! DRAM clock speed ")
-  printf("|| Share of boards expected to fail the lima-memtester test\n")
+  printf("! rowspan=2 | DRAM clock speed\n")
+  printf("! colspan=2 | Percentage of boards failing the lima-memtester test\n")
+  printf("! rowspan=2 | Theoretical pessimistic upper bound of the failure " +
+         "percentage using Chebyshev's inequality for lower semivariance\n")
+  printf("|-\n")
+  printf("! Experimental results\n")
+  printf("! Theoretical prediction (assuming Gaussian distribution)\n")
 
   freq = max_freq
   while true
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-    break if p < 0.0001 || freq <= min_freq
+    pc = chebyshev_lower_semivariance_p(samples, freq)
+    break if (p < 0.0001 && pc < 0.01) || freq <= min_freq
     freq -= $binning_interval
   end
 
   while freq <= max_freq
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-    printf("|-\n| %.0f MHz|| %.2f %%\n", freq, p * 100)
+    pc = chebyshev_lower_semivariance_p(samples, freq)
+    observed = samples.reduce(0) {|sum, x| x <= freq ? sum + 1 : sum }
+    color = "lightgreen"
+    color = "yellow" if p >= 0.01 || pc >= 0.05
+    color = "orange" if observed > 0
+    printf("|- style=\"background-color: %s;\"\n| %.0f MHz || %.2f %% (%d/%d) || %.2f %% || %.2f %%\n",
+           color,
+           freq, observed * 100.0 / samples.size, observed, samples.size,
+           p * 100, pc * 100)
     break if p >= 0.99
     freq += $binning_interval
   end
