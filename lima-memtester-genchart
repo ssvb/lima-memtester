@@ -111,28 +111,6 @@ def html_parse(data)
 end
 
 ###############################################################################
-# Combine multiple p-values to get a single aggregate one                     #
-###############################################################################
-
-# https://en.wikipedia.org/wiki/Fisher%27s_method
-def combine_p_values_using_fisher_method(a)
-  chi2 = -2 * a.reduce(0) {|sum, x| sum += Math.log(x.to_f) }
-  df = 2 * a.size
-  # Borrowed 'q_chi2' code from https://github.com/abscondment/statistics2
-  # Authors: Shin-ichiro HARA(sinara@blade.nagaokaut.ac.jp),
-  #          Brendan Ribera (brendan.ribera@gmail.com)
-  # LICENSE: http://www.ruby-lang.org/en/LICENSE.txt
-  s = t = Math.exp(-0.5 * chi2)
-  k = 2
-  while k < df
-    t *= chi2 / k
-    s += t
-    k += 2
-  end
-  s
-end
-
-###############################################################################
 # Chebyshev's inequality for lower semivariance                               #
 ###############################################################################
 
@@ -150,68 +128,12 @@ def chebyshev_lower_semivariance_p(samples, val)
 end
 
 ###############################################################################
-# Shapiro-Wilk test of normality (by calling an external R programming
-# language interpreter)
-###############################################################################
-
-def normality_test(samples)
-  r_input = sprintf("data <- c(%s) ; shapiro.test(data)",
-                    samples.map {|x| x.to_f }.join(", "))
-  r_output = `echo '#{r_input}' | R --vanilla 2>/dev/null`
-  return $1.to_f if r_output =~ /W = \S+, p\-value = (\S+)/
-end
-
-###############################################################################
-# Reconstruct continuous values
+# Cumulative distribution function                                            #
 ###############################################################################
 
 # https://en.wikipedia.org/wiki/Normal_distribution#Cumulative_distribution_function
 def cumulative_distribution_function(x, sample_mean, sample_stddev)
   return 0.5 * (1 + Math.erf((x - sample_mean) / (sample_stddev * Math.sqrt(2))))
-end
-
-# Take binned samples as the input and try to reconstruct a realistic
-# random set of continuous values, which produce the same binned samples
-# after rounding
-def undo_rounding(samples, sample_mean, sample_stddev)
-  samples.map do |x|
-    # Identify upper and lower boundaries of the bin
-    x_lo = (x.to_i / $binning_interval * $binning_interval).to_f
-    x_hi = (x_lo + $binning_interval).to_f
-    # CDF value at the boundaries of the bin
-    cdf_lo = cumulative_distribution_function(x_lo, sample_mean, sample_stddev)
-    cdf_hi = cumulative_distribution_function(x_hi, sample_mean, sample_stddev)
-    # Standard uniform random number [0, 1)
-    randval = rand
-    # Pick a random CDF value between upper and lower boundaries
-    cdf_target = cdf_lo + randval * (cdf_hi - cdf_lo)
-    # Use bisecting to find the clock frequency, matching the target CDF
-    while true
-      x_mid = (x_lo + x_hi) / 2.0
-      cdf_mid = cumulative_distribution_function(x_mid, sample_mean, sample_stddev)
-      if cdf_mid < cdf_target
-        cdf_lo = cdf_mid
-        x_lo = x_mid
-      elsif cdf_mid > cdf_target
-        cdf_hi = cdf_mid
-        x_hi = x_mid
-      else
-        break
-      end
-      break if x_hi - x_lo <= 0.001
-    end
-    (x_hi + x_lo) / 2
-  end
-end
-
-# Simulate Gaussian distribution
-def gaussian(mean, stddev)
-  theta = 2 * Math::PI * rand
-  rho = Math.sqrt(-2 * Math.log(1 - rand))
-  scale = stddev * rho
-  x = mean + scale * Math.cos(theta)
-  y = mean + scale * Math.sin(theta)
-  return x
 end
 
 ###############################################################################
@@ -230,7 +152,6 @@ printf("Frequency shift   : %d MHz\n", freq_delta.to_i)
 printf("Binning interval  : %d MHz\n", $binning_interval)
 
 multinomial_data = []
-gnuplot_data = []
 
 data_sets.each do |samples|
   printf("Processing data   : %s\n", samples.map {|x| x.to_i })
@@ -242,16 +163,6 @@ data_sets.each do |samples|
 
   printf("Sample mean       : %f\n", sample_mean)
   printf("Sample stddev     : %f\n", sample_stddev)
-
-  # Shapiro-Wilk test does not like rounded values very much, so we first
-  # artifically "undo" the rounding.
-  p_values = []
-  5.times do
-    continuous_samples = undo_rounding(samples, sample_mean, sample_stddev)
-    p_value = normality_test(continuous_samples)
-    p_values.push(p_value) if p_value
-  end
-  printf("Shapiro-Wilk test : p=%s\n", p_values) if p_values.size > 0
 
   # Analyze the frequencies range plus/minus six standard deviations from the mean
   mid_freq = sample_mean.to_i / $binning_interval * $binning_interval
@@ -307,14 +218,6 @@ data_sets.each do |samples|
     freq += $binning_interval
   end
   printf("|}\n")
-
-  tmp = Tempfile.new("lima-memetster-genchart")
-  (min_freq..max_freq).step(4) do |freq|
-    p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
-    tmp.printf("%f %f\n", freq, p * 100)
-  end
-  tmp.flush
-  gnuplot_data.push(tmp)
 end
 
 ###############################################################################
@@ -346,49 +249,4 @@ if multinomial_data.size >= 1
   r_input += sprintf("out <- xmulti(observed, prob, detail=3)\n")
   r_output = `echo '#{r_input}' | R --vanilla 2>/dev/null`
   printf("%s\n", r_output) if r_output
-end
-
-###############################################################################
-# Gnuplot                                                                     #
-###############################################################################
-
-if ARGV.size >= 2
-  # Test the availability of the required tools
-  def tool_exists(tool_name)
-    `which #{tool_name} > /dev/null 2>&1`
-    if $?.to_i != 0 then
-      printf("Error: the required '%s' executable is not found in PATH\n", tool_name)
-      return false
-    else
-      return true
-    end
-  end
-  exit(1) unless tool_exists("gnuplot")
-  pngfile = ARGV[1]
-
-  IO.popen("gnuplot", "w") do |fh|
-    fh.write "
-      set terminal png size 800, 600
-      set output '#{pngfile}'
-      set format y '%.0f'
-      set xtics 24
-      set ytics (1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100)
-      set grid xtics ytics
-      set xrange [360:816]
-      set yrange [0:103]
-      set xlabel 'DRAM clock frequency, MHz'
-      set ylabel 'Share of boards expected to fail the lima-memtester test, %'
-      # blue
-      set style line 1 lc rgb '#0060ff' lt 1 lw 2 pt 7 pi 6 ps 0
-      # green
-      set style line 2 lc rgb '#32cd32' lt 1 lw 2 pt 7 pi 6 ps 0
-      # red
-      set style line 3 lc rgb '#ff4500' lt 1 lw 2 pt 7 pi 6 ps 0
-      # pink
-      set style line 4 lc rgb '#ff1493' lt 1 lw 2 pt 7 pi 6 ps 0
-      plot "
-    fh.write gnuplot_data.map.with_index {|data, idx|
-      "'#{data.path}' using 1:2 with linespoints ls #{idx + 1} notitle"
-    }.join(",")
-  end
 end
