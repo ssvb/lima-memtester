@@ -128,6 +128,45 @@ def chebyshev_lower_semivariance_p(samples, val)
 end
 
 ###############################################################################
+# Multinomial test (by calling an external R programming language interpreter #
+# with XNomial library). If there are two sets of DRAM clock frequencies      #
+# provided then use the first set for training and the second set for testing #
+###############################################################################
+
+def multinomial_test(multinomial_data)
+  if multinomial_data.size >= 1
+    cutoff_prob = 0.0001
+    train_idx = 0
+    test_idx  = (multinomial_data.size >= 2 ? 1 : 0)
+    tmp = {}
+    multinomial_data[train_idx][:prob].each do |freq, prob|
+      tmp[freq] = [prob, 0] if prob >= cutoff_prob
+    end
+    multinomial_data[test_idx][:observed].each do |freq, observed|
+      prob = (multinomial_data[train_idx][:prob][freq] || 0.0)
+      next if observed == 0 && prob < cutoff_prob
+      tmp[freq] = [prob, observed]
+    end
+    tmp = tmp.sort
+
+    # https://cran.r-project.org/web/packages/XNomial/vignettes/XNomial.html
+    r_input  = sprintf("library(XNomial)\n\n")
+    r_input += sprintf("prob <- c(%s)\n", tmp.map {|x| x[1][0]}.join(", "))
+    r_input += sprintf("observed <- c(%s)\n", tmp.map {|x| x[1][1]}.join(", "))
+    r_input += sprintf("out <- xmulti(observed, prob, detail=3)\n")
+    r_output = `echo '#{r_input}' | R --vanilla 2>/dev/null`
+
+    if r_output
+      x_output = ""
+      r_output.each_line do |l|
+        x_output += "    " + l.strip + "\n" if l =~ /^P value/
+      end
+      return x_output if x_output != ""
+    end
+  end
+end
+
+###############################################################################
 # Cumulative distribution function                                            #
 ###############################################################################
 
@@ -185,15 +224,38 @@ data_sets.each do |samples|
   end
   multinomial_data.push(tmp)
 
+  multinomial_results = multinomial_test([multinomial_data[-1]])
+
   printf("\n")
   printf("{| class=\"wikitable\"\n")
   printf("! rowspan=2 | DRAM clock speed\n")
   printf("! colspan=2 | Percentage of boards failing the lima-memtester test\n")
   printf("! rowspan=2 | Theoretical pessimistic upper bound of the failure " +
-         "percentage using Chebyshev's inequality for lower semivariance\n")
+         "percentage using Chebyshev's inequality for lower semivariance  <ref name=\"chebyshev\">\n")
+  printf("If nothing is known about the distribution of samples, then at least\n")
+  printf("[https://en.wikipedia.org/wiki/Chebyshev's_inequality Chebyshev's inequality]\n")
+  printf("can be used to get a rough idea about the probabilities of encountering reliability\n")
+  printf("problems at different DRAM clock speeds. But this method is <u>very conservative</u>\n")
+  printf("and substantially overestimates probabilities (being too generic has its price).\n")
+  printf("</ref>\n")
   printf("|-\n")
   printf("! Experimental results\n")
-  printf("! Theoretical prediction (assuming Gaussian distribution)\n")
+  printf("! Theoretical prediction (assuming Gaussian distribution) <ref name=\"gaussian\">\n")
+  printf("We can assume that the [https://en.wikipedia.org/wiki/Normal_distribution Gaussian distribution]\n")
+  printf("is a good approximation for our experimental data, calculate theoretical probabilities and do an\n")
+  printf("[http://www.biostathandbook.com/exactgof.html exact test of goodness-of-fit]\n")
+  printf("to see if the experimental data does not contradict with the theory.\n")
+  printf("There is a nice [https://cran.r-project.org/web/packages/XNomial/vignettes/XNomial.html XNomial]\n")
+  printf("library for R, which can do the job")
+  if multinomial_results
+    printf(":<pre>\n#{multinomial_results}</pre>\n")
+    printf("If the [https://en.wikipedia.org/wiki/P-value p-values] listed above happen to be too low\n")
+    printf("(less than 0.05) and reject our [https://en.wikipedia.org/wiki/Null_hypothesis null hypothesis]\n")
+    printf("about having the Gaussian distribution, then Chebyshev's inequality estimates still can be used.\n")
+  else
+    printf(" (it was not installed on the system where this report had been generated).\n")
+  end
+  printf("</ref>\n")
 
   freq = max_freq
   while true
@@ -218,35 +280,6 @@ data_sets.each do |samples|
     freq += $binning_interval
   end
   printf("|}\n")
-end
+  printf("<references/>\n")
 
-###############################################################################
-# Multinomial test (by calling an external R programming language interpreter #
-# with EMT library). If there are two sets of DRAM clock frequencies provided #
-# (separated by ',') then use the first set for training and the second set   #
-# for testing.                                                                #
-###############################################################################
-
-if multinomial_data.size >= 1
-  cutoff_prob = 0.0001
-  train_idx = 0
-  test_idx  = (multinomial_data.size >= 2 ? 1 : 0)
-  tmp = {}
-  multinomial_data[train_idx][:prob].each do |freq, prob|
-    tmp[freq] = [prob, 0] if prob >= cutoff_prob
-  end
-  multinomial_data[test_idx][:observed].each do |freq, observed|
-    prob = (multinomial_data[train_idx][:prob][freq] || 0.0)
-    next if observed == 0 && prob < cutoff_prob
-    tmp[freq] = [prob, observed]
-  end
-  tmp = tmp.sort
-
-  # http://www.inside-r.org/packages/cran/emt/docs/multinomial.test
-  r_input  = sprintf("library(XNomial)\n\n")
-  r_input += sprintf("prob <- c(%s)\n", tmp.map {|x| x[1][0]}.join(", "))
-  r_input += sprintf("observed <- c(%s)\n", tmp.map {|x| x[1][1]}.join(", "))
-  r_input += sprintf("out <- xmulti(observed, prob, detail=3)\n")
-  r_output = `echo '#{r_input}' | R --vanilla 2>/dev/null`
-  printf("%s\n", r_output) if r_output
 end
