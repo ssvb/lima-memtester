@@ -269,10 +269,10 @@ data_sets.each do |samples|
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
     pc = chebyshev_lower_semivariance_p(samples, freq)
     observed = samples.reduce(0) {|sum, x| x <= freq ? sum + 1 : sum }
-    color = "lightgreen"
-    color = "yellow" if p >= 0.01 || pc >= 0.05
-    color = "orange" if observed > 0
-    printf("|- style=\"background-color: %s;\"\n| %.0f MHz || %.2f %% (%d/%d) || %.2f %% || %.2f %%\n",
+    color = ""
+    color = "style=\"color: orange;\"" if p >= 0.01 || pc >= 0.05
+    color = "style=\"color: red;\"" if observed > 0
+    printf("|- %s\n| %.0f MHz || %.2f %% (%d/%d) || %.2f %% || %.2f %%\n",
            color,
            freq, observed * 100.0 / samples.size, observed, samples.size,
            p * 100, pc * 100)
