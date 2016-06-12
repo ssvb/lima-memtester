@@ -238,6 +238,7 @@ data_sets.each do |samples|
   printf("problems at different DRAM clock speeds. But this method is <u>very conservative</u>\n")
   printf("and substantially overestimates probabilities (being too generic has its price).\n")
   printf("</ref>\n")
+  printf("! rowspan=2 | Histogram\n")
   printf("|-\n")
   printf("! Experimental results\n")
   printf("! Theoretical prediction (assuming Gaussian distribution) <ref name=\"gaussian\">\n")
@@ -265,14 +266,17 @@ data_sets.each do |samples|
     freq -= $binning_interval
   end
 
+  prev_observed = 0
   while freq <= max_freq
     p = cumulative_distribution_function(freq, sample_mean, sample_stddev)
     pc = chebyshev_lower_semivariance_p(samples, freq)
     observed = samples.reduce(0) {|sum, x| x <= freq ? sum + 1 : sum }
+    histogram = "*" * (observed - prev_observed)
+    prev_observed = observed
     color = ""
     color = "style=\"color: orange;\"" if p >= 0.01 || pc >= 0.05
     color = "style=\"color: red;\"" if observed > 0
-    printf("|- %s\n| %.0f MHz || %.2f %% (%d/%d) || %.2f %% || %.2f %%\n",
+    printf("|- %s\n| %.0f MHz || %.2f %% (%d/%d) || %.2f %% || %.2f %% || #{histogram}\n",
            color,
            freq, observed * 100.0 / samples.size, observed, samples.size,
            p * 100, pc * 100)
